@@ -1,0 +1,5 @@
+../Core/Src/pid.c:10:6:PID_Init	40	static
+../Core/Src/pid.c:23:6:setDirection	16	static
+../Core/Src/pid.c:27:6:setSampleTime	16	static
+../Core/Src/pid.c:31:6:setTunings	32	static
+../Core/Src/pid.c:45:6:computePID	72	static
