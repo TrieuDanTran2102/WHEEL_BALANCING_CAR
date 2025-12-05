@@ -290,3 +290,4 @@ void MPU6050_HardReset(void)
     HAL_Delay(20);
 }
 
+//new
