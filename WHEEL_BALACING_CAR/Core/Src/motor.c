@@ -79,8 +79,10 @@ Direction parseDirection(const char *str)
 	return -1;
 }
 
-void Motor_Controller(Motor Motor, Direction Direction, uint16_t percent1, uint16_t percent2)
+void Motor_Controller(Motor Motor, Direction Direction, uint16_t percent)
 {
+	if (percent > 80) percent = 80;
+
 	switch(Motor)
 	{
 		case M1:
@@ -94,7 +96,7 @@ void Motor_Controller(Motor Motor, Direction Direction, uint16_t percent1, uint1
 			else {
 				Motor1_Reverse();
 			}
-			Motor1_SetSpeed(percent1);
+			Motor1_SetSpeed(percent);
 			break;
 		case M2:
 			if (Direction == S) {
@@ -107,7 +109,7 @@ void Motor_Controller(Motor Motor, Direction Direction, uint16_t percent1, uint1
 			else  {
 				Motor2_Reverse();
 			}
-			Motor2_SetSpeed(percent2);
+			Motor2_SetSpeed(percent);
 			break;
 		case ALL:
 			if (Direction == S) {
@@ -123,8 +125,8 @@ void Motor_Controller(Motor Motor, Direction Direction, uint16_t percent1, uint1
 			    Motor1_Reverse();
 			    Motor2_Reverse();
 			}
-		    Motor1_SetSpeed(percent1);
-		    Motor2_SetSpeed(percent1);
+		    Motor1_SetSpeed(percent);
+		    Motor2_SetSpeed(percent);
 			break;
 		default:
 			printf("Control Motor Error!\r\n");
@@ -139,21 +141,28 @@ void Motor_Init(Motor_TypeDef *MT, double* Rotational_Speed)
 
 void Motor_CalculateVelocity(Motor_TypeDef *MT, TIM_HandleTypeDef *htim)
 {
-	volatile short encoder_cnt = __HAL_TIM_GET_COUNTER(htim);
-	volatile short delta_cnt = encoder_cnt - MT->encoder_cnt_pre;
+	int32_t encoder_cnt = __HAL_TIM_GET_COUNTER(htim);
+	int32_t delta_cnt = encoder_cnt - MT->encoder_cnt_pre;
+
+	// xử lý overflow 16-bit
+	if (delta_cnt > 32767) delta_cnt -= 65536;
+	if (delta_cnt < -32768) delta_cnt += 65536;
+
 	MT->encoder_cnt_pre = encoder_cnt;
 
-//	*MT->Rotational_Speed = delta_cnt * MINUTE / (CPR * RATE );
-//	*MT->Rotational_Speed = delta_cnt / 33 * 100;
-	*MT->Rotational_Speed = delta_cnt;
+	// lọc nhiễu bằng Low-pass filter
+	float alpha = 0.1;
+	*MT->Rotational_Speed = ((1 - alpha) * (*MT->Rotational_Speed) + alpha * delta_cnt);
+
+//	*MT->Rotational_Speed = (int)((1 - alpha) * (*MT->Rotational_Speed) + alpha * delta_cnt);
+
+//	*MT->Rotational_Speed = delta_cnt;
 }
 
 void Motor_getPercent(Motor_TypeDef *MT, double PID_Output)
 {
-//	MT->per = tanh(0.01 * PID_Output) * PERCENT_MAX;
-//	MT->dir = MT->per > 0 ? F : R;
-
 	MT->dir = PID_Output > 0 ? F : R;
-	MT->per = tanh(0.01 * fabs(PID_Output)) * PERCENT_MAX;
-}
+//	MT->per = tanh(0.01 * fabs(PID_Output)) * PERCENT_MAX;
 
+	MT->per = fabs(PID_Output) > PERCENT_MAX ? PERCENT_MAX : fabs(PID_Output);
+}

@@ -2,4 +2,5 @@
 ../Core/Src/pid.c:23:6:setDirection	1
 ../Core/Src/pid.c:27:6:setSampleTime	1
 ../Core/Src/pid.c:31:6:setTunings	2
-../Core/Src/pid.c:45:6:computePID	2
+../Core/Src/pid.c:45:6:setLimit	1
+../Core/Src/pid.c:52:6:computePID	4

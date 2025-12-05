@@ -47,7 +47,7 @@ void Motor2_Stop(void);
 void Motor1_SetSpeed(uint16_t percent);
 void Motor2_SetSpeed(uint16_t percent);
 
-void Motor_Controller(Motor, Direction, uint16_t percent1, uint16_t percent2);
+void Motor_Controller(Motor, Direction, uint16_t percent);
 
 void Motor_Init(Motor_TypeDef *MT, double* Rotational_Speed);
 void Motor_CalculateVelocity(Motor_TypeDef *MT, TIM_HandleTypeDef *htim);

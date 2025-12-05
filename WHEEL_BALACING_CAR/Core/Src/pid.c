@@ -42,6 +42,13 @@ void setTunings(PID_TypeDef *PID, float Kp, float Ki, float Kd){
     PID->Kd = Kd / SampleTimeInSec;
 }
 
+void setLimit(PID_TypeDef *PID, int16_t Integral_Max, int16_t Integral_Min, int16_t Output_Max, int16_t Output_Min)
+{
+    PID->Integral_Max = Integral_Max;
+    PID->Integral_Min = Integral_Min;
+    PID->Output_Max = Output_Max;
+    PID->Output_Min = Output_Min;
+}
 void computePID(PID_TypeDef *PID){
     uint32_t now = GetTime();
     uint32_t timeChange = now - PID->LastTime;
@@ -52,6 +59,8 @@ void computePID(PID_TypeDef *PID){
 		double error = setpoint - input;
 
         PID->sumError += (double)(PID->Ki * error);
+        if (PID->sumError > PID->Integral_Max) PID->sumError = PID->Integral_Max;
+        if (PID->sumError < PID->Integral_Min) PID->sumError = PID->Integral_Min;
 
         double dInput = (double)(error - PID->lastError);
 

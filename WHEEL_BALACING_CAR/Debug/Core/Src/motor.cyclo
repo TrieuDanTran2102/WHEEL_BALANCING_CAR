@@ -8,7 +8,7 @@
 ../Core/Src/motor.c:56:6:Motor2_SetSpeed	2
 ../Core/Src/motor.c:66:7:parseMotor	4
 ../Core/Src/motor.c:74:11:parseDirection	4
-../Core/Src/motor.c:82:6:Motor_Controller	11
-../Core/Src/motor.c:135:6:Motor_Init	1
-../Core/Src/motor.c:140:6:Motor_CalculateVelocity	1
-../Core/Src/motor.c:151:6:Motor_getPercent	2
+../Core/Src/motor.c:82:6:Motor_Controller	12
+../Core/Src/motor.c:137:6:Motor_Init	1
+../Core/Src/motor.c:142:6:Motor_CalculateVelocity	3
+../Core/Src/motor.c:162:6:Motor_getPercent	3

@@ -49,4 +49,6 @@ void mpu6050_read_Temp(MPU6050_t *DataStruct);
 void mpu6050_read_All(MPU6050_t *DataStruct);
 double Kalman_getAngle(Kalman_t *Kalman, double newAngle, double newRate, double dt);
 void mpu6050_calibrate(MPU6050_t *DataStruct);
+void I2C_ResetBus(void);
+void MPU6050_HardReset(void);
 #endif /* INC_MPU6050_H_ */

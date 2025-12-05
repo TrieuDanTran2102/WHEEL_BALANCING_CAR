@@ -33,10 +33,11 @@ uint8_t READYnot2[]=" GYRO_CONFIG_REG NOOOOO READY!!!! \n";
 
 
 // SETUP 6050
+HAL_StatusTypeDef res;
 uint8_t check_global;
 double readroll,readpick;
 #define MPU6050_ADDR 0xD0
-const uint16_t i2c_timeout = 100;
+const uint16_t i2c_timeout = 1000;
 const double Accel_Z_corrector = 14418.0;  //Hằng số hiệu chỉnh giá trị gia tốc trục Z.
 
 uint32_t timer;
@@ -57,7 +58,7 @@ void mpu6050_init(MPU6050_t *DataStruct, double *output)
 	DataStruct->myOutput = output;
 	uint8_t check; //dùng để nhận giá trị ID cảm biến (đọc từ thanh ghi WHO_AM_I).
 	uint8_t Data;
-
+	HAL_Delay(100);
 	HAL_I2C_Mem_Read(&hi2c1, MPU6050_ADDR, WHO_AM_I_REG, I2C_MEMADD_SIZE_8BIT, &check, 1, i2c_timeout);
 	check_global = check;
 	if(check==104)
@@ -160,11 +161,32 @@ double Kalman_getAngle(Kalman_t *Kalman, double newAngle, double newRate, double
 
 void mpu6050_read_All(MPU6050_t *DataStruct)
 {
+	HAL_Delay(5);
 	uint8_t Rec_Data[14];
+	res = HAL_I2C_Mem_Read(&hi2c1, MPU6050_ADDR, ACCEL_XOUT_H_REG, I2C_MEMADD_SIZE_8BIT, Rec_Data, 14 ,i2c_timeout);
+
+
+	if (res != HAL_OK)
+	{
+	    // Reset I2C bus nếu bị treo
+		I2C_ResetBus();
+	    HAL_I2C_DeInit(&hi2c1);
+	    HAL_Delay(3);
+	    HAL_I2C_Init(&hi2c1);
+	    check_global = 0;
+
+	    return;
+	}
+	else{
+		 check_global = 104;
+	}
+
+
+
 	int16_t temp;
 
 	//READ 14 bytes
-	HAL_I2C_Mem_Read(&hi2c1, MPU6050_ADDR, ACCEL_XOUT_H_REG, 1 , Rec_Data, 14, i2c_timeout );
+//	HAL_I2C_Mem_Read(&hi2c1, MPU6050_ADDR, ACCEL_XOUT_H_REG, 1 , Rec_Data, 14, i2c_timeout );
 
     DataStruct->Accel_X_RAW = (int16_t)(Rec_Data[0] << 8 | Rec_Data[1]);
     DataStruct->Accel_Y_RAW = (int16_t)(Rec_Data[2] << 8 | Rec_Data[3]);
@@ -217,27 +239,54 @@ void mpu6050_read_All(MPU6050_t *DataStruct)
     DataStruct->KalmanAngleX = Kalman_getAngle(&KalmanX, roll, DataStruct->Gx, dt);
     *DataStruct->myOutput = DataStruct->KalmanAngleX;
 }
+void I2C_ResetBus(void)
+{
+    GPIO_InitTypeDef GPIO_InitStruct = {0};
 
+    // Chuyển PB6=SCL, PB7=SDA sang Output Open-Drain
+    GPIO_InitStruct.Pin = GPIO_PIN_6 | GPIO_PIN_7;
+    GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_OD;
+    GPIO_InitStruct.Pull = GPIO_PULLUP;
+    GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_HIGH;
+    HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
-//void mpu6050_init()
-//{
-//	  HAL_StatusTypeDef ret =  HAL_I2C_IsDeviceReady(&hi2c1,  (0b1101000 << 1) + 0, 1, 100);
-//	  if (ret == HAL_OK)
-//	  {
-//		  HAL_UART_Transmit(&huart2, device, sizeof(device), 100 );
-//	  }
-//	  else{
-//		  HAL_UART_Transmit(&huart2, devicenot, sizeof(devicenot), 100 );
-//	  }
-//	  uint8_t temp_data =0b00001000;
-//	  HAL_StatusTypeDef ret1 = HAL_I2C_Mem_Write(&hi2c1, (0b1101000 << 1) + 0, 27, 1, &temp_data , 1 , 100);
-//	  if (ret1 == HAL_OK)
-//	  {
-//		  HAL_UART_Transmit(&huart2, write, sizeof(write), 100 );
-//	  }
-//	  else{
-//		  HAL_UART_Transmit(&huart2, writenot, sizeof(writenot), 100 );
-//	  }
-//
-//}
+    // Đảm bảo SDA = HIGH trước khi bắt đầu (kéo lên)
+    HAL_GPIO_WritePin(GPIOB, GPIO_PIN_7, GPIO_PIN_SET);
+    HAL_Delay(1);
+
+    // Tạo tối đa 9 xung clock, nếu SDA vẫn bị kéo thấp thì cố giải phóng
+    for (int i = 0; i < 9; i++)
+    {
+        // Nếu SDA đã high -> bus đã giải phóng, dừng sớm
+        if (HAL_GPIO_ReadPin(GPIOB, GPIO_PIN_7) == GPIO_PIN_SET) break;
+
+        HAL_GPIO_WritePin(GPIOB, GPIO_PIN_6, GPIO_PIN_SET);
+        HAL_Delay(1);
+        HAL_GPIO_WritePin(GPIOB, GPIO_PIN_6, GPIO_PIN_RESET);
+        HAL_Delay(1);
+    }
+
+    // Phát STOP condition: SDA low -> SCL high -> SDA high
+    HAL_GPIO_WritePin(GPIOB, GPIO_PIN_7, GPIO_PIN_RESET);
+    HAL_Delay(1);
+    HAL_GPIO_WritePin(GPIOB, GPIO_PIN_6, GPIO_PIN_SET);
+    HAL_Delay(1);
+    HAL_GPIO_WritePin(GPIOB, GPIO_PIN_7, GPIO_PIN_SET);
+    HAL_Delay(1);
+
+    // Trả lại chân về I2C AF
+    GPIO_InitStruct.Mode = GPIO_MODE_AF_OD;
+    GPIO_InitStruct.Pull = GPIO_NOPULL;
+    GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_HIGH;
+    GPIO_InitStruct.Alternate = GPIO_AF4_I2C1;
+    HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+}
+
+void MPU6050_HardReset(void)
+{
+    HAL_GPIO_WritePin(GPIOB, GPIO_PIN_0, GPIO_PIN_RESET);
+    HAL_Delay(20);
+    HAL_GPIO_WritePin(GPIOB, GPIO_PIN_0, GPIO_PIN_SET);
+    HAL_Delay(20);
+}
 
