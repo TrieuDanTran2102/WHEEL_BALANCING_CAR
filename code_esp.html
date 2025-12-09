@@ -1,0 +1,151 @@
+#include <WiFi.h>
+#include <WebServer.h>
+
+const char* ssid = "MilionDan";
+const char* password = "123456";
+
+WebServer server(80);
+
+// ====================== UART TO STM32 ======================
+#define STM32_UART Serial2     // UART2 của ESP32
+#define RXD2 16
+#define TXD2 17
+
+// ====================== SEND COMMAND VIA UART ======================
+void sendToSTM32(const char* cmd, int speed)
+{
+  if (speed >= 0)
+    STM32_UART.printf("%s %d\n", cmd, speed);
+  else
+    STM32_UART.printf("%s\n", cmd);
+
+  Serial.printf("Send UART: %s %d\n", cmd, speed);
+}
+
+// ====================== HANDLE /control ======================
+void handleControl() {
+  if (!server.hasArg("x") || !server.hasArg("y") || !server.hasArg("s")) {
+    server.send(400, "text/plain", "Missing arguments");
+    return;
+  }
+
+  int x = server.arg("x").toInt();   // -100..100
+  int y = server.arg("y").toInt();   // -100..100
+  int s = server.arg("s").toInt();   // 0..100
+
+  Serial.printf("Joystick x=%d, y=%d, speed=%d\n", x, y, s);
+
+  if (s == 0) {
+    sendToSTM32("S", -1);   // Stop
+    server.send(200, "text/plain", "STOP");
+    return;
+  }
+
+  if (y > 20) {
+    sendToSTM32("F", s);
+  }
+  else if (y < -20) {
+    sendToSTM32("R", s);
+  }
+  else {
+    sendToSTM32("S", -1);
+  }
+
+  server.send(200, "text/plain", "OK");
+}
+// ====================== WEB PAGE  ======================
+String htmlPage = R"rawliteral(
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>ESP32 Motor Control</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    body {
+      font-family: Arial;
+      text-align: center;
+      margin-top: 20px;
+    }
+    button {
+      width: 160px;
+      height: 60px;
+      font-size: 22px;
+      margin: 10px;
+      border-radius: 10px;
+      border: none;
+      background-color: #4CAF50;
+      color: white;
+    }
+    .stopBtn {
+      background-color: red;
+    }
+    input[type="range"] {
+      width: 80%;
+    }
+  </style>
+</head>
+<body>
+
+  <h2>ESP32 Motor Control</h2>
+
+  <button onclick="sendCmd('F')">FORWARD</button><br>
+  <button onclick="sendCmd('R')">REVERSE</button><br>
+  <button class="stopBtn" onclick="sendCmd('S')">STOP</button>
+
+  <h3>Speed: <span id="sp">50</span>%</h3>
+  <input id="speed" type="range" min="0" max="100" value="50">
+
+<script>
+  const speedSlider = document.getElementById("speed");
+  const spText = document.getElementById("sp");
+
+  speedSlider.oninput = function() {
+    spText.innerText = this.value;
+  };
+
+  function sendCmd(cmd) {
+    let s = speedSlider.value;
+
+    let x = 0, y = 0;
+
+    if (cmd === "F") y = 100;
+    if (cmd === "R") y = -100;
+    if (cmd === "S") s = 0;  // stop
+
+    fetch(`/control?x=${x}&y=${y}&s=${s}`)
+      .then(r => r.text())
+      .then(t => console.log("ESP:", t))
+      .catch(err => console.log(err));
+  }
+</script>
+
+</body>
+</html>
+
+  )rawliteral";
+// ====================== SETUP ======================
+
+void handleRoot() {
+  server.send(200, "text/html", htmlPage);
+}
+void setup() {
+  Serial.begin(115200);
+
+  // UART gửi sang STM32
+  STM32_UART.begin(115200, SERIAL_8N1, RXD2, TXD2);
+
+  // WiFi AP
+  WiFi.softAP(ssid, password);
+  Serial.print("ESP IP: ");
+  Serial.println(WiFi.softAPIP());
+
+  // WEB
+  server.on("/", handleRoot);
+  server.on("/control", handleControl);
+  server.begin();
+}
+// ====================== LOOP ======================
+void loop() {
+  server.handleClient();
+}

@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<!-- saved from url=(0066)file:///C:/Users/Windows/git/WHEEL_BALANCING_CAR/web_page/Car.html -->
+<html><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  
+  <title>ESP32 Motor Control</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Algerian', sans-serif;
+      text-align: center;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      background: url('car_background.png');
+      background-size: 100%;
+      background-position: center;
+      background-repeat: no-repeat;
+      background-color: rgb(141, 206, 244);
+      position: relative;
+      overflow: hidden;
+    }
+
+    /* Hexagonal pattern background */
+    body::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: none;
+      z-index: 0;
+    }
+
+    .container {
+      position: relative;
+      z-index: 1;
+      padding: 40px;
+    }
+
+    h2 {
+      color: rgb(130, 105, 240);
+      font-size: 40px;
+      margin-bottom: 40px;
+      text-shadow: 0 2px 10px rgba(0,0,0,0.3);
+      letter-spacing: 1px;
+    }
+
+    button {
+      width: 240px;
+      height: 70px;
+      font-size: 24px;
+      font-weight: bold;
+      margin: 15px;
+      border-radius: 35px;
+      border: none;
+      background: linear-gradient(135deg, #5a67d8 0%, #9f7aea 100%);
+      color: #ff6b6b;
+      cursor: pointer;
+      box-shadow: 0 8px 20px rgba(0,0,0,0.2);
+      transition: all 0.2s ease;
+    }
+
+    button:hover {
+      transform: scale(1.05);
+      box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+    }
+
+    button:active {
+      transform: scale(0.98);
+    }
+
+    .stopBtn {
+      background: linear-gradient(135deg, #5a67d8 0%, #9f7aea 100%);
+    }
+
+    h3 {
+      color: rgb(138, 99, 235);
+      font-size: 38px;
+      margin-top: 50px;
+      margin-bottom: 20px;
+      text-shadow: 0 2px 10px rgba(0,0,0,0.3);
+    }
+
+    #sp {
+      color: #ffd700;
+      font-weight: bold;
+    }
+
+    .slider-container {
+      width: 90%;
+      max-width: 600px;
+      margin: 10% auto;
+      position: relative;
+      padding: 10px 0;
+    }
+
+    input[type="range"] {
+      width: 100%;
+      height: 20px;
+      -webkit-appearance: none;
+      appearance: none;
+      
+      background: rgba(255,255,255,0.2);
+       
+      outline: none;
+      border-radius: 10px;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+      transition: background 0.3s ease;
+    }
+
+    input[type="range"]:hover {
+      box-shadow: 0 6px 20px rgba(0,0,0,0.3);
+    }
+
+    /* Webkit (Chrome, Safari) */
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 50px;
+      height: 50px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+      cursor: pointer;
+      box-shadow: 0 0 15px rgba(79,172,254,0.5),
+                  0 4px 10px rgba(0,0,0,0.3);
+      transition: transform 0.2s ease;
+    }
+
+    input[type="range"]::-webkit-slider-thumb:hover {
+      transform: scale(1.1);
+    }
+
+    input[type="range"]::-webkit-slider-thumb:active {
+      transform: scale(1.15);
+    }
+
+    /* Firefox */
+    input[type="range"]::-moz-range-thumb {
+      width: 50px;
+      height: 50px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+      cursor: pointer;
+      border: none;
+      box-shadow: 0 0 15px rgba(79,172,254,0.5),
+                  0 4px 10px rgba(0,0,0,0.3);
+      transition: transform 0.2s ease;
+    }
+
+    input[type="range"]::-moz-range-thumb:hover {
+      transform: scale(1.1);
+    }
+
+    input[type="range"]::-moz-range-thumb:active {
+      transform: scale(1.15);
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h2>ESP32 Motor Control</h2>
+
+    <button onclick="sendCmd(&#39;F&#39;)">Forward</button><br>
+    <button onclick="sendCmd(&#39;R&#39;)">Reverse</button><br>
+    <button class="stopBtn" onclick="sendCmd(&#39;S&#39;)">STOP</button>
+
+    <h3>SPEED: <span id="sp">50</span>%</h3>
+    <div class="slider-container">
+      <input id="speed" type="range" min="0" max="100" value="50" style="background: linear-gradient(to right, rgb(79, 172, 254) 0%, rgb(0, 242, 254) 50%, rgba(255, 255, 255, 0.2) 50%, rgba(255, 255, 255, 0.2) 100%);">
+    </div>
+  </div>
+
+<script>
+  const speedSlider = document.getElementById("speed");
+  const spText = document.getElementById("sp");
+
+  speedSlider.oninput = function() {
+    spText.innerText = this.value;
+  };
+
+  function sendCmd(cmd) {
+    let s = speedSlider.value;
+
+    let x = 0, y = 0;
+
+    if (cmd === "F") y = 100;
+    if (cmd === "R") y = -100;
+    if (cmd === "S") s = 0;  // stop
+
+    fetch(`/control?x=${x}&y=${y}&s=${s}`)
+      .then(r => r.text())
+      .then(t => console.log("ESP:", t))
+      .catch(err => console.log(err));
+  }
+  function updateSliderBackground() {
+  let val = speedSlider.value;
+  
+  let bg = `linear-gradient(to right,
+    #4facfe 0%,
+    #00f2fe ${val}%,
+    rgba(255,255,255,0.2) ${val}%,
+    rgba(255,255,255,0.2) 100%)`;
+
+  speedSlider.style.background = bg;
+}
+
+  speedSlider.oninput = function() {
+    spText.innerText = this.value;
+    updateSliderBackground();
+  };
+
+  // Gọi 1 lần khi mở trang
+  updateSliderBackground();
+</script>
+
+
+</body></html>
