@@ -7,13 +7,13 @@
 
 #include "PID.h"
 
-void PID_Init(PID_TypeDef *PID, double* input, double* output, double* setpoint, float Kp, float Ki, float Kd, PIDCD_TypeDef Direction){
+void PID_Init(PID_TypeDef *PID, double* input, double* output, double* setpoint, float Kp, float Ki, float Kd, uint32_t SampleTime, PIDCD_TypeDef Direction)
+{
     PID->MyInput = input;
     PID->MyOutput = output;
     PID->MySetpoint = setpoint;
 
-    PID->SampleTime = SAMPLE_TIME_DEFAULT;
-
+    setSampleTime(PID, SampleTime);
     setDirection(PID, Direction);
     setTunings(PID, Kp, Ki, Kd);
 

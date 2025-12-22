@@ -81,7 +81,8 @@ Direction parseDirection(const char *str)
 
 void Motor_Controller(Motor Motor, Direction Direction, uint16_t percent)
 {
-	if (percent > 80) percent = 80;
+	if (percent > PERCENT_MAX) percent = PERCENT_MAX;
+	if (percent < PERCENT_MIN) percent = PERCENT_MIN;
 
 	switch(Motor)
 	{
@@ -134,11 +135,6 @@ void Motor_Controller(Motor Motor, Direction Direction, uint16_t percent)
 	}
 }
 
-void Motor_Init(Motor_TypeDef *MT, double* Rotational_Speed)
-{
-	MT->Rotational_Speed = Rotational_Speed;
-}
-
 void Motor_CalculateVelocity(Motor_TypeDef *MT, TIM_HandleTypeDef *htim)
 {
 	int32_t encoder_cnt = __HAL_TIM_GET_COUNTER(htim);
@@ -151,10 +147,10 @@ void Motor_CalculateVelocity(Motor_TypeDef *MT, TIM_HandleTypeDef *htim)
 	MT->encoder_cnt_pre = encoder_cnt;
 
 	// lọc nhiễu bằng Low-pass filter
-	float alpha = 0.1;
-	*MT->Rotational_Speed = ((1 - alpha) * (*MT->Rotational_Speed) + alpha * delta_cnt);
+	float alpha = 0.5;
+//	*MT->Rotational_Speed = ((1 - alpha) * (*MT->Rotational_Speed) + alpha * delta_cnt);
 
-//	*MT->Rotational_Speed = (int)((1 - alpha) * (*MT->Rotational_Speed) + alpha * delta_cnt);
+	*MT->Rotational_Speed = (int)((1 - alpha) * (*MT->Rotational_Speed) + alpha * delta_cnt);
 
 //	*MT->Rotational_Speed = delta_cnt;
 }

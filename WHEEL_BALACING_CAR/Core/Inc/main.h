@@ -59,10 +59,6 @@ void USB_CDC_RxHandler(uint8_t* Buf, uint32_t Len);
 /* USER CODE END EFP */
 
 /* Private defines -----------------------------------------------------------*/
-#define ENCODER2_A_Pin GPIO_PIN_0
-#define ENCODER2_A_GPIO_Port GPIOA
-#define ENCODER2_B_Pin GPIO_PIN_1
-#define ENCODER2_B_GPIO_Port GPIOA
 #define ENB_Pin GPIO_PIN_5
 #define ENB_GPIO_Port GPIOA
 #define ENCODER1_A_Pin GPIO_PIN_6

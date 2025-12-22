@@ -36,7 +36,7 @@ uint8_t READYnot2[]=" GYRO_CONFIG_REG NOOOOO READY!!!! \n";
 HAL_StatusTypeDef res;
 uint8_t check_global;
 double readroll,readpick;
-#define MPU6050_ADDR 0xD0
+#define MPU6050_ADDR 0x68<<1
 const uint16_t i2c_timeout = 1000;
 const double Accel_Z_corrector = 14418.0;  //Hằng số hiệu chỉnh giá trị gia tốc trục Z.
 

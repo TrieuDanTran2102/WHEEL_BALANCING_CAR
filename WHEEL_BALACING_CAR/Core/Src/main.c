@@ -56,30 +56,25 @@ TIM_HandleTypeDef htim3;
 TIM_HandleTypeDef htim4;
 TIM_HandleTypeDef htim5;
 
-//UART_HandleTypeDef huart1;
+UART_HandleTypeDef huart2;
 
 /* USER CODE BEGIN PV */
 MPU6050_t MPU6050;
 Motor_TypeDef MT;
-PID_TypeDef PID_Angle, PID_Velocity1;
+PID_TypeDef PID_Angle;
 
-double Angle, Rotational_Speed;
-double Angle_Output, Velocity_Output;
-double Angle_Setpoint = 0, Velocity_Setpoint = 10;
+double Angle;
+double Angle_Output;
+double Angle_Setpoint = 0.5;
 
 extern uint8_t check_global;
 
-float Velocity_kp = 25; //25.0 //50
-float Velocity_ki = 40; //40.0 //3
-float Velocity_kd = 0; //0
+float Angle_kp = 18; //18
+float Angle_ki = 122; //122
+float Angle_kd = 0.32; //0.32
 
-float Angle_kp = 1.6; //1.2
-float Angle_ki = 0.0;
-float Angle_kd = 0.02; //0.05
-
-uint8_t Delay10msFlag = 0;
-double Angle_Threshold = 15;
-uint8_t DelayMax = 100;
+uint8_t Delay5msFlag = 0;
+uint8_t Delay40msFlag = 0;
 
 uint8_t sbBuffer[50];
 uint8_t sbBufferLen = sizeof(sbBuffer);
@@ -87,9 +82,13 @@ uint8_t space[] = "\r\n";
 uint8_t USB_ReceiveFlag = 0;
 char *mPart, *dPart, *sPart;
 
-char buffer[50];
+uint8_t RxBuff[20];
+uint8_t RxData;
+uint8_t RxIndex;
+uint8_t RxFlag = 0;
+uint8_t PxBuff[20];
 
-float deltaTime, stableStart = 0, firstTime = 1;
+char buffer[50];
 double sub = 0;
 /* USER CODE END PV */
 
@@ -102,7 +101,7 @@ static void MX_TIM2_Init(void);
 static void MX_TIM3_Init(void);
 static void MX_TIM5_Init(void);
 static void MX_TIM4_Init(void);
-//static void MX_USART1_UART_Init(void);
+static void MX_USART2_UART_Init(void);
 /* USER CODE BEGIN PFP */
 /* USER CODE END PFP */
 
@@ -111,6 +110,8 @@ static void MX_TIM4_Init(void);
 int _write(int file, char *ptr, int len) {
 	while(CDC_Transmit_FS((uint8_t*) ptr, len) == USBD_BUSY);
     return len;
+//    HAL_UART_Transmit(&huart2, (uint8_t *)ptr, len, HAL_MAX_DELAY);
+//    return len;
 }
 
 void USB_CDC_RxHandler(uint8_t* Buf, uint32_t Len)
@@ -127,9 +128,44 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 {
 	if (htim->Instance == TIM4)
 	{
-		Delay10msFlag = 1;
+		Delay5msFlag = 1;
+	}
+	if (htim->Instance == TIM5)
+	{
+		Delay40msFlag = 1;
 	}
 }
+//
+//void UART2_SendFloat(float data)
+//{
+//    char buf[20];
+//    int len = sprintf(buf, "%f\r\n", data);  // chuỗi có newline cho Serial Plotter
+//    HAL_UART_Transmit(&huart2, (uint8_t*)buf, len, HAL_MAX_DELAY);
+//}
+
+void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
+{
+  /* Prevent unused argument(s) compilation warning */
+  UNUSED(huart);
+  if (huart->Instance == USART2)
+  {
+	  if (RxData != 13)
+	  {
+		  RxBuff[RxIndex++] = RxData;
+	  }
+	  else
+	  {
+		  RxBuff[RxIndex] = '\0';
+		  RxIndex = 0;
+		  RxFlag = 1;
+	  }
+	  HAL_UART_Receive_IT(&huart2, &RxData, 1);
+  }
+  /* NOTE: This function should not be modified, when the callback is needed,
+           the HAL_UART_RxCpltCallback could be implemented in the user file
+   */
+}
+
 
 /* USER CODE END 0 */
 
@@ -147,7 +183,7 @@ int main(void)
   /* MCU Configuration--------------------------------------------------------*/
 
   /* Reset of all peripherals, Initializes the Flash interface and the Systick. */
-	HAL_Init();
+  HAL_Init();
 
   /* USER CODE BEGIN Init */
 
@@ -169,26 +205,23 @@ int main(void)
   MX_TIM3_Init();
   MX_TIM5_Init();
   MX_TIM4_Init();
-//  MX_USART1_UART_Init();
+  MX_USART2_UART_Init();
   /* USER CODE BEGIN 2 */
   HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_1);
   HAL_TIM_PWM_Start(&htim2, TIM_CHANNEL_1);
   HAL_TIM_Encoder_Start(&htim3, TIM_CHANNEL_ALL);
-  HAL_TIM_Encoder_Start(&htim5, TIM_CHANNEL_ALL);
+  HAL_TIM_Base_Start_IT(&htim5);
   HAL_TIM_Base_Start_IT(&htim4);
 //  HAL_UART_Receive_IT(&huart1, &rxByte, 1);
 
   mpu6050_init(&MPU6050, &Angle);
-  Motor_Init(&MT, &Rotational_Speed);
-  PID_Init(&PID_Angle, &Angle, &Angle_Output, &Angle_Setpoint, Angle_kp, Angle_ki, Angle_kd, _PID_ON_REVERSE);
-  PID_Init(&PID_Velocity1, &Rotational_Speed, &Velocity_Output, &Velocity_Setpoint, Velocity_kp, Velocity_ki, Velocity_kd, _PID_ON_DIRECT);
+  PID_Init(&PID_Angle, &Angle, &Angle_Output, &Angle_Setpoint, Angle_kp, Angle_ki, Angle_kd, 5, _PID_ON_REVERSE);
 
-  setLimit(&PID_Angle, 20, -20, 100, -100);
-  setLimit(&PID_Velocity1, 30, -30, 100, -100);
+  setLimit(&PID_Angle, 50, -50, 500, -500);
 
   timer = HAL_GetTick();
 
-  float now = HAL_GetTick();
+  HAL_UART_Receive_IT(&huart2, &RxData, 1);
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -212,115 +245,95 @@ int main(void)
 	  	  else if (strcmp(OP, "S") == 0)
 	  	  {
 	  		  printf("Kp: %f\r\n", fabs(PID_Angle.Kp));
-	  		  printf("Ki: %f\r\n", fabs(PID_Angle.Ki/0.01));
-	  		  printf("Kd: %f\r\n", fabs(PID_Angle.Kd*0.01));
+	  		  printf("Ki: %f\r\n", fabs(PID_Angle.Ki/0.005));
+	  		  printf("Kd: %f\r\n", fabs(PID_Angle.Kd*0.005));
+	  		  printf("check_global: %d\r\n", check_global);
+	  		  printf("Angle_Setpoint: %f\r\n", Angle_Setpoint);
 	  		  printf("Angle: %f\r\n", Angle);
 	  		  printf("Speed: %d\r\n", MT.per);
-	  		  printf("check_global: %d\r\n", check_global);
-
-//	  		  printf("Setpoint: %f\r\n", Velocity_Setpoint);
-//	  		  printf("Angle_Threshold: %f\r\n", Angle_Threshold);
-//	  		  printf("Delay: %d\r\n", DelayMax);
-	  	  }
-	  	  else if (strcmp(OP, "D") == 0)
-	  	  {
-	  		  char* dPart = strtok(NULL, " ");
-	  		  DelayMax = atoi(dPart);
-	  		  printf("Done!\r\n");
-	  	  }
-	  	  else if (strcmp(OP, "A") == 0)
-	  	  {
-	  		  char* aPart = strtok(NULL, " ");
-	  		  Angle_Threshold = atof(aPart);
-	  		  printf("Done!\r\n");
-	  	  }
-	  	  else if (strcmp(OP, "SP") == 0)
-	  	  {
-	  		  char* spPart = strtok(NULL, " ");
-	  		  Velocity_Setpoint = atof(spPart);
-	  		  printf("Done!\r\n");
+	  		  printf("Angle_Output: %f\r\n", Angle_Output);
 	  	  }
 	  	  else if (strcmp(OP, "M") == 0)
 	  	  {
 	  		  printf("Tuning: T <Kp> <Ki> <Kd>\r\n");
 	  		  printf("Status: S\r\n");
-//	  		  printf("Delay: D\r\n");
-//	  		  printf("Angle_Threshold: A\r\n");
 	  	  }
-
+	  	  else if (strcmp(OP, "A") == 0)
+	  	  {
+	  		  char* aPart = strtok(NULL, " ");
+	  		  Angle_Setpoint = atof(aPart);
+	  		  printf("Done!\r\n");
+	  	  }
 	  	  USB_ReceiveFlag = 0;
 	  }
 
-	  if (check_global != 104)
-	  {
-		  //Reset bus I2C
-		  MPU6050_HardReset();
-		  mpu6050_init(&MPU6050, &Angle);
-		  continue;
-	  }
+//	  if (RxFlag)
+//	  	  {
+//	  		  RxFlag = 0;
+//	  		  HAL_UART_Transmit(&huart2, space, sizeof(space), HAL_MAX_DELAY);
+//
+//	  		  memcpy(PxBuff, RxBuff, sizeof(RxBuff));
+//	  		  char* OP = strtok((char*)PxBuff, " ");
+//	  		  if (strcmp(OP, "T") == 0)
+//	  		  {
+//	  	  		  char* pPart = strtok(NULL, " ");//Kp Part
+//	  	  		  char* iPart = strtok(NULL, " ");//Ki Part
+//	  	  		  char* dPart = strtok(NULL, " ");//Kd Part
+//
+//	  	  		  setTunings(&PID_Angle, atoff(pPart), atoff(iPart), atoff(dPart));
+//	  //	  		  setTunings(&PID_Velocity1, atoff(pPart), atoff(iPart), atoff(dPart));
+//	  	  		  printf("DONE!\r\n");
+//	  		  }
+//	  		  else if (strcmp(OP, "S") == 0)
+//	  		  {
+//	  	  		  printf("Kp: %f\r\n", fabs(PID_Angle.Kp));
+//	  	  		  printf("Ki: %f\r\n", fabs(PID_Angle.Ki/0.01));
+//	  	  		  printf("Kd: %f\r\n", fabs(PID_Angle.Kd*0.01));
+//	  	  		  printf("Angle: %f\r\n", Angle);
+//	  	  		  printf("Speed: %d\r\n", MT.per);
+//	  	  		  printf("check_global: %d\r\n", check_global);
+//	  		  }
+//	  		  else if (strcmp(OP, "C") == 0)
+//	  		  {
+//	  			  char* mPart = strtok(NULL, " ");//Motor Part (M1, M2, ALL)
+//	  			  char* dPart = strtok(NULL, " ");//Direct Part (F, R, S)
+//	  			  char* sPart = strtok(NULL, " ");//Speed Part (0-100)
+//
+//	  			  Motor motor;
+//	  			  Direction dir;
+//	  			  uint16_t speed = atoi(sPart);
+//
+//	  			  if (strcmp(mPart, "M1") == 0) motor = M1;
+//	  			  else if (strcmp(mPart, "M2") == 0) motor = M2;
+//	  			  else if (strcmp(mPart, "ALL") == 0) motor = ALL;
+//
+//	  			  if (strcmp(dPart, "F") == 0) dir = F;
+//	  			  else if (strcmp(mPart, "R") == 0) dir = R;
+//	  			  else if (strcmp(mPart, "S") == 0) dir = S;
+//
+//	  			  Motor_Controller(motor, dir, speed);
+//	  		  }
+//	  	  }
 
-//	  if (Delay10msFlag) {
-//	      Delay10msFlag = 0;
-//	      mpu6050_read_All(&MPU6050);
-//	  }
-	  mpu6050_read_All(&MPU6050);
+	  	if (Delay5msFlag)
+		{
+	  		Delay5msFlag = 0;
+	  		mpu6050_read_All(&MPU6050);
+	  		computePID(&PID_Angle);
+		}
+//		sprintf(buffer,"Angle: %f\r\n",Angle);
+//		CDC_Transmit_FS((uint8_t*)buffer, strlen(buffer));
 
+	  	Motor_getPercent(&MT, Angle_Output);
+	  	Motor_Controller(ALL, MT.dir, MT.per);
 
-//	  if(Angle > Angle_Threshold || Angle < -Angle_Threshold)
-//	  {
-//		  if (Angle > Angle_Threshold)
-//			  Motor_Controller(ALL, F, 80);
-//		  else if (Angle < -Angle_Threshold)
-//			  Motor_Controller(ALL, R, 80);
-//		  HAL_Delay(DelayMax);
-//		  Motor_Controller(ALL, S, 0);
-//		  HAL_Delay(DelayMax);
-//		  continue;
-//	  }
+//	  	Motor_Controller(ALL, F, 100);
 
-
-	  if (Delay10msFlag)
-	  {
-//		  computePID(&PID_Angle);
-////	  	  Velocity_Setpoint = tanh(0.01 * Angle_Output) * DELTA_MAX;
-//	  	  Velocity_Setpoint = Angle_Output;
-		  Motor_CalculateVelocity(&MT, &htim3);
-		  computePID(&PID_Velocity1);
-
-		  sub = Rotational_Speed - Velocity_Setpoint;
-
-		  Delay10msFlag = 0;
-	  }
-
-//	  if (count++ > 100)
-//	  {
-//		  sprintf(buffer,"%f\r\n",Rotational_Speed);
-//		  CDC_Transmit_FS((uint8_t*)buffer, strlen(buffer));
-//		  count = 0;
-//	  }
-
-	  Motor_getPercent(&MT, Velocity_Output);
-	  Motor_Controller(ALL, MT.dir, MT.per);
-
-	  if ((*MT.Rotational_Speed > 9 && *MT.Rotational_Speed < 11) && firstTime)
-	  {
-		  if (stableStart == 0)
-		  {
-			  stableStart = HAL_GetTick();
-		  }
-		  else if (HAL_GetTick() - stableStart >= 1000) // ổn định trong 1000ms
-		  {
-			  deltaTime = HAL_GetTick() - now - 1000;
-			  firstTime = 0;
-		  }
-	  }
-	  else stableStart = 0;
-
-//	  Motor_Controller(ALL, F, 34);
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
   }
+
   /* USER CODE END 3 */
 }
 
@@ -607,7 +620,7 @@ static void MX_TIM4_Init(void)
   htim4.Instance = TIM4;
   htim4.Init.Prescaler = 7199;
   htim4.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim4.Init.Period = 99;
+  htim4.Init.Period = 49;
   htim4.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
   htim4.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
   if (HAL_TIM_Base_Init(&htim4) != HAL_OK)
@@ -643,28 +656,24 @@ static void MX_TIM5_Init(void)
 
   /* USER CODE END TIM5_Init 0 */
 
-  TIM_Encoder_InitTypeDef sConfig = {0};
+  TIM_ClockConfigTypeDef sClockSourceConfig = {0};
   TIM_MasterConfigTypeDef sMasterConfig = {0};
 
   /* USER CODE BEGIN TIM5_Init 1 */
 
   /* USER CODE END TIM5_Init 1 */
   htim5.Instance = TIM5;
-  htim5.Init.Prescaler = 0;
+  htim5.Init.Prescaler = 7199;
   htim5.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim5.Init.Period = 4294967295;
+  htim5.Init.Period = 199;
   htim5.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
   htim5.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
-  sConfig.EncoderMode = TIM_ENCODERMODE_TI12;
-  sConfig.IC1Polarity = TIM_ICPOLARITY_RISING;
-  sConfig.IC1Selection = TIM_ICSELECTION_DIRECTTI;
-  sConfig.IC1Prescaler = TIM_ICPSC_DIV1;
-  sConfig.IC1Filter = 0;
-  sConfig.IC2Polarity = TIM_ICPOLARITY_RISING;
-  sConfig.IC2Selection = TIM_ICSELECTION_DIRECTTI;
-  sConfig.IC2Prescaler = TIM_ICPSC_DIV1;
-  sConfig.IC2Filter = 0;
-  if (HAL_TIM_Encoder_Init(&htim5, &sConfig) != HAL_OK)
+  if (HAL_TIM_Base_Init(&htim5) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sClockSourceConfig.ClockSource = TIM_CLOCKSOURCE_INTERNAL;
+  if (HAL_TIM_ConfigClockSource(&htim5, &sClockSourceConfig) != HAL_OK)
   {
     Error_Handler();
   }
@@ -681,11 +690,37 @@ static void MX_TIM5_Init(void)
 }
 
 /**
-  * @brief USART1 Initialization Function
+  * @brief USART2 Initialization Function
   * @param None
   * @retval None
   */
+static void MX_USART2_UART_Init(void)
+{
 
+  /* USER CODE BEGIN USART2_Init 0 */
+
+  /* USER CODE END USART2_Init 0 */
+
+  /* USER CODE BEGIN USART2_Init 1 */
+
+  /* USER CODE END USART2_Init 1 */
+  huart2.Instance = USART2;
+  huart2.Init.BaudRate = 115200;
+  huart2.Init.WordLength = UART_WORDLENGTH_8B;
+  huart2.Init.StopBits = UART_STOPBITS_1;
+  huart2.Init.Parity = UART_PARITY_NONE;
+  huart2.Init.Mode = UART_MODE_TX_RX;
+  huart2.Init.HwFlowCtl = UART_HWCONTROL_NONE;
+  huart2.Init.OverSampling = UART_OVERSAMPLING_16;
+  if (HAL_UART_Init(&huart2) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN USART2_Init 2 */
+
+  /* USER CODE END USART2_Init 2 */
+
+}
 
 /**
   * @brief GPIO Initialization Function

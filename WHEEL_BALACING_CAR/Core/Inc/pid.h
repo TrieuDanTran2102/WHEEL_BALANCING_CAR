@@ -8,12 +8,7 @@
 #ifndef INC_PID_H_
 #define INC_PID_H_
 
-#define OUTPUT_MIN -500
-#define OUTPUT_MAX 500
-#define INTEGRAL_MAX 50
-#define INTEGRAL_MIN -50
-
-#define SAMPLE_TIME_DEFAULT 10 // Default sample time in milliseconds
+#define SAMPLE_TIME_DEFAULT 5 // Default sample time in milliseconds
 #define GetTime() HAL_GetTick()
 
 #include "stdint.h"
@@ -45,7 +40,7 @@ typedef struct {
     double lastError; // Last input value
 }PID_TypeDef;
 
-void PID_Init(PID_TypeDef *PID, double* input, double* output, double* setpoint, float Kp, float Ki, float Kd, PIDCD_TypeDef Direction);
+void PID_Init(PID_TypeDef *PID, double* input, double* output, double* setpoint, float Kp, float Ki, float Kd, uint32_t SampleTime, PIDCD_TypeDef Direction);
 void setDirection(PID_TypeDef *PID, PIDCD_TypeDef Direction);
 void setTunings(PID_TypeDef *PID, float Kp, float Ki, float Kd);
 void setSampleTime(PID_TypeDef *PID, uint32_t NewSampleTime);
