@@ -7,21 +7,16 @@
 
 #include "PID.h"
 
-void PID_Init(PID_TypeDef *PID, double* input, double* output, double* setpoint, float Kp, float Ki, float Kd, uint32_t SampleTime, PIDCD_TypeDef Direction)
+void PID_Init(PID_TypeDef *PID, double* input, double* output, double* setpoint, float Kp, float Ki, float Kd, uint32_t SampleTime)
 {
     PID->MyInput = input;
     PID->MyOutput = output;
     PID->MySetpoint = setpoint;
 
     setSampleTime(PID, SampleTime);
-    setDirection(PID, Direction);
     setTunings(PID, Kp, Ki, Kd);
 
     PID->LastTime = GetTime() - PID->SampleTime;
-}
-
-void setDirection(PID_TypeDef *PID, PIDCD_TypeDef Direction){
-    PID->Direction = Direction;
 }
 
 void setSampleTime(PID_TypeDef *PID, uint32_t NewSampleTime){
@@ -30,12 +25,6 @@ void setSampleTime(PID_TypeDef *PID, uint32_t NewSampleTime){
 
 void setTunings(PID_TypeDef *PID, float Kp, float Ki, float Kd){
     float SampleTimeInSec = (float)PID->SampleTime / 1000;
-
-    if (PID->Direction == _PID_ON_REVERSE){
-        Kp = -Kp;
-        Ki = -Ki;
-        Kd = -Kd;
-    }
 
     PID->Kp = Kp;
     PID->Ki = Ki * SampleTimeInSec;
@@ -66,15 +55,8 @@ void computePID(PID_TypeDef *PID){
 
         double output = (double)(PID->Kp * error + PID->sumError + PID->Kd * dInput);
 
-        // Clamp output to uint32_t range
-//        if (output > OUTPUT_MAX) output = OUTPUT_MAX;
-//        if (output < OUTPUT_MIN) output = OUTPUT_MIN;
-
         *PID->MyOutput = output;
-
-
         PID->lastError = error;
-
         PID->LastTime = now;
     }
 }

@@ -215,9 +215,9 @@ int main(void)
 //  HAL_UART_Receive_IT(&huart1, &rxByte, 1);
 
   mpu6050_init(&MPU6050, &Angle);
-  PID_Init(&PID_Angle, &Angle, &Angle_Output, &Angle_Setpoint, Angle_kp, Angle_ki, Angle_kd, 5, _PID_ON_REVERSE);
+  PID_Init(&PID_Angle, &Angle, &Angle_Output, &Angle_Setpoint, Angle_kp, Angle_ki, Angle_kd, 5);
 
-  setLimit(&PID_Angle, 50, -50, 500, -500);
+  setLimit(&PID_Angle, 50, -50, 100, -100);
 
   timer = HAL_GetTick();
 

@@ -148,17 +148,12 @@ void Motor_CalculateVelocity(Motor_TypeDef *MT, TIM_HandleTypeDef *htim)
 
 	// lọc nhiễu bằng Low-pass filter
 	float alpha = 0.5;
-//	*MT->Rotational_Speed = ((1 - alpha) * (*MT->Rotational_Speed) + alpha * delta_cnt);
 
 	*MT->Rotational_Speed = (int)((1 - alpha) * (*MT->Rotational_Speed) + alpha * delta_cnt);
-
-//	*MT->Rotational_Speed = delta_cnt;
 }
 
 void Motor_getPercent(Motor_TypeDef *MT, double PID_Output)
 {
-	MT->dir = PID_Output > 0 ? F : R;
-//	MT->per = tanh(0.01 * fabs(PID_Output)) * PERCENT_MAX;
-
+	MT->dir = PID_Output < 0 ? F : R;
 	MT->per = fabs(PID_Output) > PERCENT_MAX ? PERCENT_MAX : fabs(PID_Output);
 }

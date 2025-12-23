@@ -14,14 +14,7 @@
 #include "stdint.h"
 #include "stm32f4xx_hal.h"
 
-typedef enum {
-    _PID_ON_DIRECT = 0,
-    _PID_ON_REVERSE = 1
-}PIDCD_TypeDef;
-
 typedef struct {
-    PIDCD_TypeDef Direction;
-
     float Kp;          // Proportional Tuning Constant
     float Ki;          // Integral Tuning Constant
     float Kd;          // Derivative Tuning Constant
@@ -40,8 +33,7 @@ typedef struct {
     double lastError; // Last input value
 }PID_TypeDef;
 
-void PID_Init(PID_TypeDef *PID, double* input, double* output, double* setpoint, float Kp, float Ki, float Kd, uint32_t SampleTime, PIDCD_TypeDef Direction);
-void setDirection(PID_TypeDef *PID, PIDCD_TypeDef Direction);
+void PID_Init(PID_TypeDef *PID, double* input, double* output, double* setpoint, float Kp, float Ki, float Kd, uint32_t SampleTime);
 void setTunings(PID_TypeDef *PID, float Kp, float Ki, float Kd);
 void setSampleTime(PID_TypeDef *PID, uint32_t NewSampleTime);
 void setLimit(PID_TypeDef *PID, int16_t Integral_Max, int16_t Integral_Min, int16_t Output_Max, int16_t Output_Min);
