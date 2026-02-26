@@ -4,5 +4,5 @@
 ../Core/Src/mpu6050.c:120:6:mpu6050_read_Temp	40	static
 ../Core/Src/mpu6050.c:132:8:Kalman_getAngle	104	static
 ../Core/Src/mpu6050.c:162:6:mpu6050_read_All	112	static
-../Core/Src/mpu6050.c:242:6:I2C_ResetBus	32	static
-../Core/Src/mpu6050.c:285:6:MPU6050_HardReset	8	static
+../Core/Src/mpu6050.c:240:6:I2C_ResetBus	32	static
+../Core/Src/mpu6050.c:283:6:MPU6050_HardReset	8	static

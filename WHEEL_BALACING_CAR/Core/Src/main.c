@@ -321,14 +321,13 @@ int main(void)
 	  		mpu6050_read_All(&MPU6050);
 	  		computePID(&PID_Angle);
 		}
-//		sprintf(buffer,"Angle: %f\r\n",Angle);
-//		CDC_Transmit_FS((uint8_t*)buffer, strlen(buffer));
+		sprintf(buffer,"Angle: %f\r\n",Angle);
+		CDC_Transmit_FS((uint8_t*)buffer, strlen(buffer));
 
 	  	Motor_getPercent(&MT, Angle_Output);
 	  	Motor_Controller(ALL, MT.dir, MT.per);
 
 //	  	Motor_Controller(ALL, F, 100);
-
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
