@@ -1,35 +1,200 @@
-🛞 WHEEL BALANCING CAR – Xe Tự Cân Bằng 2 Bánh (STM32F407)
+🚗 Two-Wheel Self-Balancing Robot using PID Control
+<img width="580" height="580" alt="image" src="https://github.com/user-attachments/assets/0f0c71b2-6579-4101-877f-f1d402a53038" />
 
-Xe tự cân bằng hai bánh sử dụng vi điều khiển STM32F407, cảm biến MPU6050, động cơ DC điều khiển qua L298N, nguồn hạ áp Buck Converter và mô-đun ESP32 hỗ trợ điều khiển không dây. Hệ thống có khả năng tự giữ thăng bằng bằng cách đo góc nghiêng và điều chỉnh tốc độ động cơ theo thời gian thực.
+📌 Introduction
 
-📌 1. Tính năng nổi bật (Features)
+This project presents the design and implementation of a two-wheel self-balancing robot based on the inverted pendulum model.
+The system uses an STM32F407VET6 microcontroller to read sensor data, estimate the tilt angle using a Kalman Filter, and stabilize the robot using a dual-loop PID control algorithm.
 
-🚀 Tự giữ thăng bằng dựa trên đo đạc từ MPU6050.
+The project was developed as part of the Embedded System Design course at the University of Information Technology – VNUHCM.
 
-🎛 Điều khiển động cơ DC bằng thuật toán PID.
+🎯 Project Objectives
 
-🔁 Thuật toán lọc kết hợp (Complementary Filter hoặc Kalman) để ổn định góc.
+Design and build a two-wheel self-balancing robot
 
-🔋 Bộ nguồn ổn định với Buck Converter cho STM32, MPU6050 và ESP32.
+Implement angle estimation using MPU6050 (Accelerometer + Gyroscope)
 
-📡 Điều khiển không dây qua ESP32 (WiFi): xem góc nghiêng, tốc độ motor, chỉnh PID.
+Apply Kalman Filter for sensor fusion
 
-🔄 Xe có khả năng chạy tiến–lùi–quay bằng điều khiển từ xa.
+Develop a PID controller for stable balancing
 
-⚙ Tốc độ phản hồi nhanh, hoạt động ổn định.
+Control DC motors using PWM and H-Bridge driver
 
-📈 Xuất dữ liệu real-time để debug (UART hoặc WiFi).
+Implement encoder-based velocity feedback
 
-🔧 2. Phần cứng sử dụng (Hardware)
-Linh kiện	Mô tả
-STM32F407VET6	Vi điều khiển chính, xử lý PID và đọc sensor
-MPU6050	Cảm biến đo góc nghiêng (Gyro + Accelerometer)
-Động cơ DC + Encoder (nếu có)	Tạo lực cân bằng
-Driver L298N	Điều khiển tốc độ & chiều quay động cơ
-Buck Converter	Hạ áp từ 12V xuống 5V / 3.3V
-ESP32	Điều khiển WiFi, giao tiếp UART với STM32
-Pin 18650 / 12V	Nguồn cho toàn hệ thống
-Khung xe + bánh + trục	Phần cơ khí
+🧠 System Architecture
+
+The system consists of four main functional blocks:
+
+MPU6050 Sensor Interface
+
+Reads acceleration and angular velocity via I2C
+
+Computes initial roll angle
+
+Kalman Filter Processing
+
+Fuses accelerometer and gyroscope data
+
+Reduces noise and gyro drift
+
+Outputs stable tilt angle
+
+PID Controller
+
+Outer loop: Angle stabilization
+
+Inner loop: Velocity control (using encoder feedback)
+
+Produces motor control signal
+
+Motor Controller
+
+Controls direction via L298N H-Bridge
+
+Controls speed via PWM (TIM1, TIM2)
+
+Encoder feedback via TIM3, TIM5
+
+⚙️ Hardware Components
+Component	Description
+STM32F407VET6	Main microcontroller
+MPU6050	6-axis IMU sensor (I2C)
+L298N	Dual H-Bridge motor driver
+JGA25-370 DC Motor with Encoder	12V DC motor (130 RPM, 1:45 ratio)
+LM2596 Buck Converter	12V → 5V voltage regulator
+18650 Battery (3 cells)	12V power supply
+🔌 Peripheral Configuration
+
+System Clock: 72 MHz (HSE + PLL)
+
+I2C1: 100 kHz (MPU6050 communication)
+
+TIM1 & TIM2: PWM generation (Motor control)
+
+TIM3 & TIM5: Encoder mode
+
+TIM4: 10ms interrupt (Control loop timing)
+
+USB CDC: Real-time monitoring & PID tuning
+
+🧮 Control Algorithm
+1️⃣ Angle Estimation
+
+Roll angle from accelerometer:
+
+Roll = atan(Ay / sqrt(Ax² + Az²)) × 180 / π
+
+Gyroscope integration:
+
+θ = θ_previous + ω × Δt
+
+Kalman Filter fuses both signals to produce a stable angle.
+
+2️⃣ PID Controller
+
+The control signal is calculated as:
+
+Output = Kp * error + Ki * ∫error + Kd * d(error)/dt
+
+Two PID loops:
+
+Angle PID (stabilization)
+
+Velocity PID (motor speed control)
+
+📊 Default PID Parameters
+// Angle PID
+Kp = 1325
+Ki = 500
+Kd = 43
+
+// Velocity PID
+Kp = 56
+Ki = 2
+Kd = 0.2
+
+These parameters were experimentally tuned for optimal stability.
+
+💻 Software Structure
+Core/
+ ├── main.c
+ ├── pid.c
+ ├── motor.c
+ ├── mpu6050.c
+ ├── kalman.c
+
+Key Files:
+
+main.c → System initialization & control loop
+
+pid.c → PID algorithm implementation
+
+motor.c → Motor direction & PWM control
+
+mpu6050.c → Sensor interface
+
+kalman.c → Sensor fusion
+
+🖥️ USB Command Interface
+
+The system supports real-time tuning via USB CDC.
+
+Commands:
+
+Tune PID:
+
+T <Kp> <Ki> <Kd>
+
+Check Status:
+
+S
+
+Show Help:
+
+M
+🔄 Control Loop Timing
+
+Timer interrupt every 10 ms
+
+Sensor read → Kalman filter → PID → Motor control
+
+📈 Performance
+
+Stable vertical balancing
+
+Fast disturbance recovery
+
+Smooth motor response
+
+Reduced noise using Kalman Filter
+
+Encoder-based velocity feedback
+
+🚀 Future Development
+
+ESP32 wireless control
+
+Line-following mode
+
+Obstacle avoidance (Ultrasonic sensor)
+
+Camera integration (ESP32-CAM)
+
+Advanced control (LQR / State-Space control)
+
+👨‍💻 Authors
+
+Dương Thanh Hiếu – 23520475
+
+Trần Triệu Dân – 23520223
+
+Nguyễn Quốc Cường – 23520204
+
+Instructor: Trần Ngọc Đức
+
+University of Information Technology – VNUHCM
+Embedded System Design – 2025
 
 4.	Sơ đồ nối mạch quay động cơ DC 
 <img width="975" height="683" alt="image" src="https://github.com/user-attachments/assets/2d7b3d0a-c3a4-4173-9960-d3665685e991" />
