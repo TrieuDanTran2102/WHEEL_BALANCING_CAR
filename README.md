@@ -195,8 +195,8 @@ Nguyễn Quốc Cường – 23520204
 
 Instructor: Trần Ngọc Đức
 
-University of Information Technology – VNUHCM
+University of Information Technology – UIT
 Embedded System Design – 2025
 
-4.	Sơ đồ nối mạch quay động cơ DC 
+📈 Wiring diagram for a DC motor
 <img width="975" height="683" alt="image" src="https://github.com/user-attachments/assets/2d7b3d0a-c3a4-4173-9960-d3665685e991" />
